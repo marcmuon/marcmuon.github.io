@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.6.1 -->
+<title>Using LDA Topic Models as a Classification Model Input | Marc Kelechava</title>
+<meta name="generator" content="Jekyll v3.8.5" />
+<meta property="og:title" content="Using LDA Topic Models as a Classification Model Input" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="This article was originally published on Medium here." />
+<meta property="og:description" content="This article was originally published on Medium here." />
+<link rel="canonical" href="http://localhost:4000/2019/03/19/Using-LDA-Topic-Models-as-a-Classification-Input.html" />
+<meta property="og:url" content="http://localhost:4000/2019/03/19/Using-LDA-Topic-Models-as-a-Classification-Input.html" />
+<meta property="og:site_name" content="Marc Kelechava" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2019-03-19T00:00:00-07:00" />
+<script type="application/ld+json">
+{"url":"http://localhost:4000/2019/03/19/Using-LDA-Topic-Models-as-a-Classification-Input.html","headline":"Using LDA Topic Models as a Classification Model Input","dateModified":"2019-03-19T00:00:00-07:00","datePublished":"2019-03-19T00:00:00-07:00","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/2019/03/19/Using-LDA-Topic-Models-as-a-Classification-Input.html"},"description":"This article was originally published on Medium here.","@type":"BlogPosting","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Marc Kelechava" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Marc Kelechava</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">Using LDA Topic Models as a Classification Model Input</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2019-03-19T00:00:00-07:00" itemprop="datePublished">Mar 19, 2019
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p><em>This article was originally published on Medium <a href="https://towardsdatascience.com/unsupervised-nlp-topic-models-as-a-supervised-learning-input-cf8ee9e5cf28">here</a>.</em></p>
+
+<h1 id="topic-modeling-overview">Topic Modeling Overview</h1>
+
+<p>Topic Modeling in NLP seeks to find hidden semantic structure in documents. They are probabilistic models that can help you comb through massive amounts of raw text and cluster similar groups of documents together in an unsupervised way.</p>
+
+<p>This post specifically focuses on Latent Dirichlet Allocation (LDA), which was a technique proposed in 2000 for population genetics and re-discovered independently by ML-hero Andrew Ng et al. in 2003. LDA states that each document in a corpus is a combination of a fixed number of topics. A topic has a probability of generating various words, where the words are all the observed words in the corpus. These ‘hidden’ topics are then surfaced based on the likelihood of word co-occurrence. Formally, this is Bayesian Inference problem [1].</p>
+
+<h1 id="lda-output">LDA Output</h1>
+
+<p>Once LDA topic modeling is applied to set of documents, you‘re able to see the words that make up each hidden topic. In my case, I took 100,000 reviews from Yelp Restaurants in 2016 using the Yelp dataset [2]. Here are two examples of topics discovered via LDA:</p>
+
+<p><img src="http://localhost:4000/images/lda_img1.png" alt="Image" /></p>
+
+<p>You can see the first topic group seems to have identified word co-occurrences for negative burger reviews, and the second topic group seems to have identified positive Italian restaurant experiences. The third topic isn’t as clear-cut, but generally seems to touch on terrible, dry salty food.</p>
+
+<h1 id="converting-unsupervised-output-to-a-supervised-problem">Converting Unsupervised Output to a Supervised Problem</h1>
+
+<p>I was more interested to see if this hidden semantic structure (generated unsupervised) could be converted to be used in a supervised classification problem. Assume for a minute that I had only trained a LDA model to find 3 topics as above. After training, I could then take all 100,000 reviews and see the <em>distribution of topics</em> for every review. In other words, some documents might be 100% Topic 1, others might be 33%/33%/33% of Topic 1/2/3, etc. That output is just a vector for every review showing the distribution. The idea here is to test whether the distribution per review of hidden semantic information could predict positive and negative sentiment.</p>
+
+<h1 id="project-goal">Project Goal</h1>
+
+<p>With that intro out of the way, here was my goal:</p>
+
+<p><img src="http://localhost:4000/images/lda_img2.png" alt="Image" /></p>
+
+<p>Specifically:</p>
+
+<ol>
+  <li>Train LDA Model on 100,000 Restaurant Reviews from 2016</li>
+  <li>Grab Topic distributions for every review using the LDA Model</li>
+  <li>Use Topic Distributions directly as feature vectors in supervised classification models (Logistic Regression, SVC, etc) and get F1-score.</li>
+  <li>Use the same 2016 LDA model to get topic distributions from 2017 (<strong>the LDA model did not see this data!</strong>)</li>
+  <li>Run supervised classification models again on the 2017 vectors and see if this generalizes.</li>
+</ol>
+
+<blockquote>
+  <p>If the supervised F1-scores on the unseen data generalizes, then we can posit that the 2016 topic model has identified latent semantic structure that persists over time in this restaurant review domain.</p>
+</blockquote>
+
+<h1 id="data-prep">Data Prep</h1>
+
+<p>UPDATE (9/23/19): I’ve added a README to <a href="https://github.com/marcmuon/nlp_yelp_review_unsupervised">the Repo</a> which shows how to create a MongoDB using the source data. I’ve also included a <a href="https://github.com/marcmuon/nlp_yelp_review_unsupervised/blob/master/preprocess.py">preprocessing script</a> which will allow you to create the exact training and test DataFrames I use below. However, I realize that might be a lot of work, so I also included pickle files of my Train and Test DataFrames in the directory <a href="https://github.com/marcmuon/nlp_yelp_review_unsupervised/tree/master/data">here</a>. This will allow you to follow along with the notebooks in the repo directly, namely, <a href="https://github.com/marcmuon/nlp_yelp_review_unsupervised/blob/master/notebooks/2-train_corpus_prep_and_LDA_train.ipynb">here</a> and then <a href="https://github.com/marcmuon/nlp_yelp_review_unsupervised/blob/master/notebooks/3-test_corpus_prep_and_apply_LDA_get_vectors.ipynb">here</a>. <strong>If you’d rather just get the highlights/takeaways, I point out all the key bits in the rest of this blog post below with code snippets.</strong></p>
+
+<h1 id="lda-pre-processing">LDA Pre-Processing</h1>
+
+<p>I used the truly wonderful gensim library to create bi-gram representations of the reviews and to run LDA. Gensim’s LDA implementation needs reviews as a sparse vector. Conveniently, gensim also provides convenience utilities to convert NumPy dense matrices or scipy sparse matrices into the required form.</p>
+
+<p>I’ll show how I got to the requisite representation using gensim functions. I started with a pandas DataFrame containing the text of every review in a column named<code class="highlighter-rouge">'text’</code>, which can be extracted to a list of list of strings, where each list represents a review. This is the object named<code class="highlighter-rouge">words</code> in my example below:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">nltk.corpus</span> <span class="kn">import</span> <span class="n">stopwords</span>
+<span class="n">stop_words</span> <span class="o">=</span> <span class="n">stopwords</span><span class="o">.</span><span class="n">words</span><span class="p">(</span><span class="s">'english'</span><span class="p">)</span>
+<span class="n">stop_words</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="s">'come'</span><span class="p">,</span><span class="s">'order'</span><span class="p">,</span><span class="s">'try'</span><span class="p">,</span><span class="s">'go'</span><span class="p">,</span><span class="s">'get'</span><span class="p">,</span><span class="s">'make'</span><span class="p">,</span><span class="s">'drink'</span><span class="p">,</span><span class="s">'plate'</span><span class="p">,</span><span class="s">'dish'</span><span class="p">,</span><span class="s">'restaurant'</span><span class="p">,</span><span class="s">'place'</span><span class="p">,</span>
+                  <span class="s">'would'</span><span class="p">,</span><span class="s">'really'</span><span class="p">,</span><span class="s">'like'</span><span class="p">,</span><span class="s">'great'</span><span class="p">,</span><span class="s">'service'</span><span class="p">,</span><span class="s">'came'</span><span class="p">,</span><span class="s">'got'</span><span class="p">])</span>
+
+<span class="k">def</span> <span class="nf">remove_stopwords</span><span class="p">(</span><span class="n">texts</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">[[</span><span class="n">word</span> <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">simple_preprocess</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">doc</span><span class="p">))</span> <span class="k">if</span> <span class="n">word</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">stop_words</span><span class="p">]</span> <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">texts</span><span class="p">]</span>
+
+<span class="k">def</span> <span class="nf">bigrams</span><span class="p">(</span><span class="n">words</span><span class="p">,</span> <span class="n">bi_min</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">tri_min</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+    <span class="n">bigram</span> <span class="o">=</span> <span class="n">gensim</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">Phrases</span><span class="p">(</span><span class="n">words</span><span class="p">,</span> <span class="n">min_count</span> <span class="o">=</span> <span class="n">bi_min</span><span class="p">)</span>
+    <span class="n">bigram_mod</span> <span class="o">=</span> <span class="n">gensim</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">phrases</span><span class="o">.</span><span class="n">Phraser</span><span class="p">(</span><span class="n">bigram</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">bigram_mod</span>
+    
+<span class="k">def</span> <span class="nf">get_corpus</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
+    <span class="n">df</span><span class="p">[</span><span class="s">'text'</span><span class="p">]</span> <span class="o">=</span> <span class="n">strip_newline</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+    <span class="n">words</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">sent_to_words</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">text</span><span class="p">))</span>
+    <span class="n">words</span> <span class="o">=</span> <span class="n">remove_stopwords</span><span class="p">(</span><span class="n">words</span><span class="p">)</span>
+    <span class="n">bigram_mod</span> <span class="o">=</span> <span class="n">bigrams</span><span class="p">(</span><span class="n">words</span><span class="p">)</span>
+    <span class="n">bigram</span> <span class="o">=</span> <span class="p">[</span><span class="n">bigram_mod</span><span class="p">[</span><span class="n">review</span><span class="p">]</span> <span class="k">for</span> <span class="n">review</span> <span class="ow">in</span> <span class="n">words</span><span class="p">]</span>
+    <span class="n">id2word</span> <span class="o">=</span> <span class="n">gensim</span><span class="o">.</span><span class="n">corpora</span><span class="o">.</span><span class="n">Dictionary</span><span class="p">(</span><span class="n">bigram</span><span class="p">)</span>
+    <span class="n">id2word</span><span class="o">.</span><span class="n">filter_extremes</span><span class="p">(</span><span class="n">no_below</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">no_above</span><span class="o">=</span><span class="mf">0.35</span><span class="p">)</span>
+    <span class="n">id2word</span><span class="o">.</span><span class="n">compactify</span><span class="p">()</span>
+    <span class="n">corpus</span> <span class="o">=</span> <span class="p">[</span><span class="n">id2word</span><span class="o">.</span><span class="n">doc2bow</span><span class="p">(</span><span class="n">text</span><span class="p">)</span> <span class="k">for</span> <span class="n">text</span> <span class="ow">in</span> <span class="n">bigram</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">corpus</span><span class="p">,</span> <span class="n">id2word</span><span class="p">,</span> <span class="n">bigram</span>
+
+<span class="n">train_corpus</span><span class="p">,</span> <span class="n">train_id2word</span><span class="p">,</span> <span class="n">bigram_train</span> <span class="o">=</span> <span class="n">get_corpus</span><span class="p">(</span><span class="n">rev_train</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>I’m omitting showing a few steps of additional pre-processing (punctuation, stripping newlines, etc) for brevity in this post.</p>
+
+<p>There are really 2 key items in this code block:</p>
+
+<ol>
+  <li>Gensim’s Phrases class allows you to group related phrases into one token for LDA. For example, note that in the list of found topics toward the start of this post that <em>ice_cream</em> was listed as a single token. Thus the output of this line <code class="highlighter-rouge">bigram = [bigram_mod[review] for review in words]</code> is a list of lists where each list represents a review and the strings in each list are a mix of unigrams and bigrams. This is the case since the what we’ve done is apply the <code class="highlighter-rouge">bigram_mod</code> phrase modeling model to every review.</li>
+  <li>Once you have that list of lists of unigrams and bigrams, you can pass it to gensim’s Dictionary class. This will output the word frequency count of each word <em>for each review</em>. I found that I had the best results with LDA when I additionally did some processing to remove the most common and the rarest words in the corpus as shown in line 21 of the above code block. Finally here’s what <code class="highlighter-rouge">doc2bow()</code>  is doing, from their official <a href="https://radimrehurek.com/gensim/tut1.html">examples</a> [3]:</li>
+</ol>
+
+<blockquote>
+  <p>“The function <code class="highlighter-rouge">_doc2bow()_</code> simply counts the number of occurrences of each distinct word, converts the word to its integer word id and returns the result as a sparse vector. The sparse vector <code class="highlighter-rouge">_[(0, 1), (1, 1)]_</code> therefore reads: in the document “Human computer interaction”, the words computer (id 0) and human (id 1) appear once; the other ten dictionary words appear (implicitly) zero times.”</p>
+</blockquote>
+
+<p>Line 23 above then gives us the corpus in the representation needed for LDA.</p>
+
+<p>To give an example of the type of text we’re dealing with, here’s a snapshot of a Yelp review:</p>
+
+<p><img src="http://localhost:4000/images/lda_img3.png" alt="Image" /></p>
+
+<h1 id="choosing-the-number-of-topics-for-lda">Choosing the Number of Topics for LDA</h1>
+
+<p>In order to train a LDA model you need to provide a fixed assume number of topics across your corpus. There are a number of ways you could approach this:</p>
+
+<ol>
+  <li>Run LDA on your corpus with different numbers of topics and see if word distribution per topic looks sensible.</li>
+  <li>Examine the coherence scores of your LDA model, and effectively grid search to choose the highest coherence [4].</li>
+  <li>Create a handful of LDA models with different topic values, then see how these perform in the supervised classification model training. This is specific to my goals here, since my ultimate aim is to see if the topic distributions have predictive value.</li>
+</ol>
+
+<p>Of these: I don’t trust #1 as a method at all. Who am I to say what’s sensible or not in this context? I’m relying on LDA to identify latent topic representations of 100,000 documents, and it’s possible that it won’t necessarily be intuitive. For #2: I talked to some former NLP professionals and they dissuaded me from relying on coherence scores based on their experience in industry. Approach #3 would be reasonable for my purpose but there’s a reality that LDA takes a non-trivial of time to train even though I was using a 16GB 8-Core AWS instance.</p>
+
+<p>Thus I came up with an idea that I think is fairly novel — at the very least, I haven’t seen anyone do this online or in papers:</p>
+
+<p>Gensim also provides a Hierarchical Dirichlet Process (HDP) class [5]. HDP is similar to LDA, except it seeks to learn the correct number of topics from the data; that is, you don’t need to provide a fixed number of topics. I figured I would run HDP on my 100,000 reviews a few times and see the number of topics it was learning. In my case this was always 20 topics, so I went with that.</p>
+
+<p>To get an intuitive feel for HDP: I found a number of sources online that said it’s most similar to a Chinese Restaurant Process. This is explained brilliantly by Edwin Chen <a href="http://blog.echen.me/2012/03/20/infinite-mixture-models-with-nonparametric-bayes-and-the-dirichlet-process/">here</a> [6], and beautifully visualized in [7] <a href="http://gerin.perso.math.cnrs.fr/ChineseRestaurant.html">here</a>. Here’s the visualization from [7]:</p>
+
+<p><img src="http://localhost:4000/images/lda_img4.jpeg" alt="Image" /></p>
+
+<p>In this example, we need to assign 8 to a topic. There’s a 3/8 probability 8 will land in topic C1, a 4/8 probability 8 will land in topic C2, and a 1/8 probability a new topic C3 will be created. In this way a number of topics is discovered. So the bigger a cluster is, the more likely it is for someone to join that cluster. I felt this was just as reasonable as any other method to choose a fixed topic number for LDA. If anyone with a heavier Bayesian Inference background has thoughts on this please weigh in!</p>
+
+<h1 id="creating-a-lda-model">Creating a LDA Model</h1>
+
+<p>Here’s the code to run LDA with Gensim:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">gensim</span>
+<span class="kn">import</span> <span class="nn">logging</span> <span class="c1"># This allows for seeing if the model converges. A log file is created.
+</span><span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s">'lda_model.log'</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s">'</span><span class="si">%(asctime)</span><span class="s">s : </span><span class="si">%(levelname)</span><span class="s">s : </span><span class="si">%(message)</span><span class="s">s'</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s">'ignore'</span><span class="p">)</span>
+    <span class="n">lda_train</span> <span class="o">=</span> <span class="n">gensim</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">ldamulticore</span><span class="o">.</span><span class="n">LdaMulticore</span><span class="p">(</span>
+                           <span class="n">corpus</span><span class="o">=</span><span class="n">train_corpus</span><span class="p">,</span>
+                           <span class="n">num_topics</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+                           <span class="n">id2word</span><span class="o">=</span><span class="n">train_id2word</span><span class="p">,</span>
+                           <span class="n">chunksize</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+                           <span class="n">workers</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="c1"># Num. Processing Cores - 1
+</span>                           <span class="n">passes</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>
+                           <span class="n">eval_every</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+                           <span class="n">per_word_topics</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">lda_train</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s">'lda_train.model'</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>By turning on the <code class="highlighter-rouge">eval_every</code> flag we’re able to process the corpus in chunks: in my case chunks of 100 documents worked fairly well for convergence. The number of passes is separate passes over the entire corpus.</p>
+
+<p>Once that’s done, you can view the words making up each topic as follows:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">lda_train</span><span class="o">.</span><span class="n">print_topics</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span><span class="n">num_words</span><span class="o">=</span><span class="mi">15</span><span class="p">)[:</span><span class="mi">10</span><span class="p">]</span>
+</code></pre></div></div>
+
+<p>With that code you’ll see 10 of the 20 topics and the 15 top words for each.</p>
+
+<h1 id="converting-topics-to-feature-vectors">Converting Topics to Feature Vectors</h1>
+
+<p>Now comes the interesting bit. We’re going to use the LDA model to grab the distribution of these 20 topics for every review. This 20-vector will be our feature vector for supervised classification, with the supervised learning goal being to determine positive or negative sentiment.</p>
+
+<p>Note that I think this approach for supervised classification using topic model vectors is not very common. When I did it I wasn’t aware of any example online of people trying this, though later on when I was done I discovered this <a href="http://gibbslda.sourceforge.net/fp224-phan.pdf">paper</a> where it was done in 2008 [8]. Please let me know if there are other examples out there!</p>
+
+<blockquote>
+  <p>The ultimate goal is not only to see how this performs in a train/test CV split of the current data, but whether the topics have hit on something fundamental that translates to unseen test data in the future (in my case, data from a year later).</p>
+</blockquote>
+
+<p>Here’s what I did to grab the feature vectors for every review:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">train_vecs</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">rev_train</span><span class="p">)):</span>
+    <span class="n">top_topics</span> <span class="o">=</span> <span class="n">lda_train</span><span class="o">.</span><span class="n">get_document_topics</span><span class="p">(</span><span class="n">train_corpus</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">minimum_probability</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">topic_vec</span> <span class="o">=</span> <span class="p">[</span><span class="n">top_topics</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">20</span><span class="p">)]</span>
+    <span class="n">topic_vec</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">rev_train</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">real_counts</span><span class="p">])</span> <span class="c1"># counts of reviews for restaurant
+</span>    <span class="n">topic_vec</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">rev_train</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">)])</span> <span class="c1"># length review
+</span>    <span class="n">train_vecs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">topic_vec</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>The key bit is using <code class="highlighter-rouge">minimum_probability=0.0</code> in line 3. This ensures that we’ll capture the instances where a review is presented with 0% in some topics, and the representation for each review will add up to 100%.</p>
+
+<p>Lines 5 and 6 are two hand-engineered features I added.</p>
+
+<p>Thus a single observation for a review for supervised classification now looks like this:</p>
+
+<p><img src="http://localhost:4000/images/lda_img5.png" alt="Image" /></p>
+
+<p>The first 20 items represent the distribution for the 20 found topics for each review.</p>
+
+<h1 id="training-a-supervised-classifier">Training a Supervised Classifier</h1>
+
+<p>We’re now ready to train! Here I’m using 100,000 2016 restaurant reviews and their topic-model distribution feature vector + two hand-engineered features:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">train_vecs</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">rev_train</span><span class="o">.</span><span class="n">target</span><span class="p">)</span>
+
+<span class="n">kf</span> <span class="o">=</span> <span class="n">KFold</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="n">cv_lr_f1</span><span class="p">,</span> <span class="n">cv_lrsgd_f1</span><span class="p">,</span> <span class="n">cv_svcsgd_f1</span><span class="p">,</span>  <span class="o">=</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[]</span>
+
+<span class="k">for</span> <span class="n">train_ind</span><span class="p">,</span> <span class="n">val_ind</span> <span class="ow">in</span> <span class="n">kf</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+    <span class="c1"># Assign CV IDX
+</span>    <span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="n">train_ind</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="n">train_ind</span><span class="p">]</span>
+    <span class="n">X_val</span><span class="p">,</span> <span class="n">y_val</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="n">val_ind</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="n">val_ind</span><span class="p">]</span>
+    
+    <span class="c1"># Scale Data
+</span>    <span class="n">scaler</span> <span class="o">=</span> <span class="n">StandardScaler</span><span class="p">()</span>
+    <span class="n">X_train_scale</span> <span class="o">=</span> <span class="n">scaler</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+    <span class="n">X_val_scale</span> <span class="o">=</span> <span class="n">scaler</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">X_val</span><span class="p">)</span>
+
+    <span class="c1"># Logisitic Regression
+</span>    <span class="n">lr</span> <span class="o">=</span> <span class="n">LogisticRegression</span><span class="p">(</span>
+        <span class="n">class_weight</span><span class="o">=</span> <span class="s">'balanced'</span><span class="p">,</span>
+        <span class="n">solver</span><span class="o">=</span><span class="s">'newton-cg'</span><span class="p">,</span>
+        <span class="n">fit_intercept</span><span class="o">=</span><span class="bp">True</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train_scale</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+    <span class="n">y_pred</span> <span class="o">=</span> <span class="n">lr</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_val_scale</span><span class="p">)</span>
+    <span class="n">cv_lr_f1</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f1_score</span><span class="p">(</span><span class="n">y_val</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">average</span><span class="o">=</span><span class="s">'binary'</span><span class="p">))</span>
+    
+    <span class="c1"># Logistic Regression SGD
+</span>    <span class="n">sgd</span> <span class="o">=</span> <span class="n">linear_model</span><span class="o">.</span><span class="n">SGDClassifier</span><span class="p">(</span>
+        <span class="n">max_iter</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+        <span class="n">tol</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span>
+        <span class="n">loss</span><span class="o">=</span><span class="s">'log'</span><span class="p">,</span>
+        <span class="n">class_weight</span><span class="o">=</span><span class="s">'balanced'</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train_scale</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+    
+    <span class="n">y_pred</span> <span class="o">=</span> <span class="n">sgd</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_val_scale</span><span class="p">)</span>
+    <span class="n">cv_lrsgd_f1</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f1_score</span><span class="p">(</span><span class="n">y_val</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">average</span><span class="o">=</span><span class="s">'binary'</span><span class="p">))</span>
+    
+    <span class="c1"># SGD Modified Huber
+</span>    <span class="n">sgd_huber</span> <span class="o">=</span> <span class="n">linear_model</span><span class="o">.</span><span class="n">SGDClassifier</span><span class="p">(</span>
+        <span class="n">max_iter</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+        <span class="n">tol</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span>
+        <span class="n">alpha</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+        <span class="n">loss</span><span class="o">=</span><span class="s">'modified_huber'</span><span class="p">,</span>
+        <span class="n">class_weight</span><span class="o">=</span><span class="s">'balanced'</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train_scale</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+    
+    <span class="n">y_pred</span> <span class="o">=</span> <span class="n">sgd_huber</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_val_scale</span><span class="p">)</span>
+    <span class="n">cv_svcsgd_f1</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f1_score</span><span class="p">(</span><span class="n">y_val</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">average</span><span class="o">=</span><span class="s">'binary'</span><span class="p">))</span>
+
+<span class="k">print</span><span class="p">(</span><span class="n">f</span><span class="s">'Logistic Regression Val f1: {np.mean(cv_lr_f1):.3f} +- {np.std(cv_lr_f1):.3f}'</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="n">f</span><span class="s">'Logisitic Regression SGD Val f1: {np.mean(cv_lrsgd_f1):.3f} +- {np.std(cv_lrsgd_f1):.3f}'</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="n">f</span><span class="s">'SVM Huber Val f1: {np.mean(cv_svcsgd_f1):.3f} +- {np.std(cv_svcsgd_f1):.3f}'</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>A couple notes on this:</p>
+
+<ol>
+  <li>I landed on a comparison between standard Logistic Regression, Stochastic Gradient Descent with Log Loss, and Stochastic Gradient Descent with Modified Huber loss.</li>
+  <li>I’m running a 5-fold CV, so that in each run 1/5 of the reviews are held-out as validation data, and the other 4/5 are training data. This is repeated for every fold, and the f1 score results are averaged at the end.</li>
+  <li>My classes are imbalanced. In particular, there are a disproportionate amount of 4 and 5 star reviews in the Yelp review dataset. The <code class="highlighter-rouge">class_weight='balanced'</code> line in the models approximates undersampling to correct for this. See [9] for a justification of this choice.</li>
+  <li>I’ve also restricted the analysis to just restaurants that had above the 25th percentile in total reviews in the dataset. This was more of a restriction to speed things up since the initial dataset was something like 4 million+ reviews.</li>
+</ol>
+
+<h1 id="2016-training-results">2016 Training Results</h1>
+
+<p>Here are the f1-score results:</p>
+
+<p><img src="http://localhost:4000/images/lda_img6.png" alt="Image" /></p>
+
+<p>I’ll first walk-through the lower .53 and .62 f1-scores using Logisitic Regression. When I initially started training I tried to predict the individual review ratings: 1,2,3,4 or 5 stars. As you can see this was not successful. I was a bit discouraged with the initial .53 score, so went back to examine my initial EDA charts to see if I could notice anything in the data. I had run this chart earlier on:</p>
+
+<p><img src="http://localhost:4000/images/lda_img7.png" alt="Image" /></p>
+
+<p>This shows the word count IQR range by rating. Since the main IQR range was pretty compact, I decided to try re-running the LDA pre-processing and model restricted to just (roughly) the IQR range. Making this change increased my Logistic Regression score on f1 to .62 for 1,2,3,4,5 star classification. Still not great.</p>
+
+<p>At this point I decided to see what would happen if I got rid of the 3-stars, and grouped the 1,2 stars as ‘bad’ and 4,5 stars as ‘good’ sentiment scores. As you’ll see in the graph above, this worked wonder! Now Logistic Regression yieled a .869 f1-score.</p>
+
+<h1 id="modified-huber-loss">Modified Huber Loss</h1>
+
+<p>When I was running these, I noticed a ‘modified huber’ loss option in SKLearn’s Stochastic Gradient Descent implementation [10]. In this case, the penalty for being wrong is much worse than either Hinge (SVC) or Log Loss:</p>
+
+<p><img src="http://localhost:4000/images/lda_img8.png" alt="Image" /></p>
+
+<p>I’m still grappling with why this worked so well, but my initial thought is that these punishing penalties caused SGD (remember, 1 by 1 weight updates) to learn quickly. Regularization helped immensely here as well. The alpha in line 42 in the code above is a regularization parameter (think like in Ridge or Lasso regularization), and this helped in getting my f1-score up to .936.</p>
+
+<h1 id="applying-the-model-on-unseen-data">Applying the Model on Unseen Data</h1>
+
+<p>At this point I was pretty thrilled by these results, but wanted to further see what would happen on completely unseen data.</p>
+
+<p>Specifically:</p>
+
+<ol>
+  <li>Take the LDA Model from the 2016 reviews, and grab feature vectors on test data. It’s important to note that the same 2016 model can be used to do this!</li>
+  <li>Re-run the models on the test-vectors.</li>
+</ol>
+
+<p>All that’s required is making bigrams for the test corpus, then throwing this into the test-vector extraction approach as before:</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">get_bigram</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
+    <span class="s">"""
+    For the test data we only need the bigram data built on 2017 reviews,
+    as we'll use the 2016 id2word mappings. This is a requirement due to 
+    the shapes Gensim functions expect in the test-vector transformation below.
+    With both these in hand, we can make the test corpus.
+    """</span>
+    <span class="n">df</span><span class="p">[</span><span class="s">'text'</span><span class="p">]</span> <span class="o">=</span> <span class="n">strip_newline</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+    <span class="n">words</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">sent_to_words</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">text</span><span class="p">))</span>
+    <span class="n">words</span> <span class="o">=</span> <span class="n">remove_stopwords</span><span class="p">(</span><span class="n">words</span><span class="p">)</span>
+    <span class="n">bigram</span> <span class="o">=</span> <span class="n">bigrams</span><span class="p">(</span><span class="n">words</span><span class="p">)</span>
+    <span class="n">bigram</span> <span class="o">=</span> <span class="p">[</span><span class="n">bigram</span><span class="p">[</span><span class="n">review</span><span class="p">]</span> <span class="k">for</span> <span class="n">review</span> <span class="ow">in</span> <span class="n">words</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">bigram</span>
+  
+<span class="n">bigram_test</span> <span class="o">=</span> <span class="n">get_bigram</span><span class="p">(</span><span class="n">rev_test</span><span class="p">)</span>
+
+<span class="n">test_corpus</span> <span class="o">=</span> <span class="p">[</span><span class="n">train_id2word</span><span class="o">.</span><span class="n">doc2bow</span><span class="p">(</span><span class="n">text</span><span class="p">)</span> <span class="k">for</span> <span class="n">text</span> <span class="ow">in</span> <span class="n">bigram_test</span><span class="p">]</span>
+
+<span class="n">test_vecs</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">rev_test</span><span class="p">)):</span>
+    <span class="n">top_topics</span> <span class="o">=</span> <span class="n">lda_train</span><span class="o">.</span><span class="n">get_document_topics</span><span class="p">(</span><span class="n">test_corpus</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">minimum_probability</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">topic_vec</span> <span class="o">=</span> <span class="p">[</span><span class="n">top_topics</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">20</span><span class="p">)]</span>
+    <span class="n">topic_vec</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">rev_test</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">real_counts</span><span class="p">])</span> <span class="c1"># counts of reviews for restaurant
+</span>    <span class="n">topic_vec</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">rev_test</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">)])</span> <span class="c1"># length review
+</span>    <span class="n">test_vecs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">topic_vec</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Finally, the results:</p>
+
+<p><img src="http://localhost:4000/images/lda_img9.png" alt="Image" /></p>
+
+<p>Somewhat shockingly to me, this generalizes!</p>
+
+<p>I was thrilled with this result, as I believe this approach could work generally for any company trying to train a classifier in this way. I also did a hypothesis test at the end using mlxtend [11] and the final result is indeed statistically significant.</p>
+
+<h1 id="future-work">Future Work</h1>
+
+<p>I intend on extending this a bit in the future, and I’ll leave you with that:</p>
+
+<p><img src="http://localhost:4000/images/lda_img10.png" alt="Image" /></p>
+
+<p>I’ve also hosted all the code for this and the trained LDA model on my GitHub <a href="https://github.com/marcmuon/nlp_yelp_review_unsupervised">here</a>.</p>
+
+<p>Thanks for reading!</p>
+
+<h1 id="sources">Sources</h1>
+
+<p>[1] <a href="https://en.wikipedia.org/wiki/Latent_Dirichlet_allocation">https://en.wikipedia.org/wiki/Latent_Dirichlet_allocation</a><br />
+[2] <a href="https://www.yelp.com/dataset">https://www.yelp.com/dataset</a><br />
+[3] <a href="https://radimrehurek.com/gensim/tut1.html">https://radimrehurek.com/gensim/tut1.html</a><br />
+[4] <a href="https://radimrehurek.com/gensim/models/coherencemodel.html">https://radimrehurek.com/gensim/models/coherencemodel.html</a><br />
+[5] <a href="https://radimrehurek.com/gensim/models/hdpmodel.html">https://radimrehurek.com/gensim/models/hdpmodel.html</a><br />
+[6] <a href="http://blog.echen.me/2012/03/20/infinite-mixture-models-with-nonparametric-bayes-and-the-dirichlet-process/">http://blog.echen.me/2012/03/20/infinite-mixture-models-with-nonparametric-bayes-and-the-dirichlet-process/</a><br />
+[7] <a href="http://gerin.perso.math.cnrs.fr/ChineseRestaurant.html">http://gerin.perso.math.cnrs.fr/ChineseRestaurant.html</a><br />
+[8] <a href="http://gibbslda.sourceforge.net/fp224-phan.pdf">http://gibbslda.sourceforge.net/fp224-phan.pdf</a><br />
+[9] <a href="http://blog.madhukaraphatak.com/class-imbalance-part-2/">http://blog.madhukaraphatak.com/class-imbalance-part-2/</a><br />
+[10] <a href="https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDClassifier.html">https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDClassifier.html</a><br />
+[11] <a href="http://rasbt.github.io/mlxtend/user_guide/evaluate/mcnemar/">http://rasbt.github.io/mlxtend/user_guide/evaluate/mcnemar/</a></p>
+
+  </div><a class="u-url" href="/2019/03/19/Using-LDA-Topic-Models-as-a-Classification-Input.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Marc Kelechava</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Marc Kelechava</li><li><a class="u-email" href="mailto:marc.kelechava@gmail.com">marc.kelechava@gmail.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/marcmuon"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">marcmuon</span></a></li><li><a href="https://www.linkedin.com/in/marckelechava"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#linkedin"></use></svg> <span class="username">marckelechava</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>Data Scientist at O&#39;Reilly Media &amp; Music Technology enthusiast</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>

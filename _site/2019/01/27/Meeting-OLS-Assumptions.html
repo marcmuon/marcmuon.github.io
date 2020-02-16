@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.6.1 -->
+<title>Meeting the Assumptions of OLS Regression | Marc Kelechava</title>
+<meta name="generator" content="Jekyll v3.8.5" />
+<meta property="og:title" content="Meeting the Assumptions of OLS Regression" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="This article was originally published on Medium here." />
+<meta property="og:description" content="This article was originally published on Medium here." />
+<link rel="canonical" href="http://localhost:4000/2019/01/27/Meeting-OLS-Assumptions.html" />
+<meta property="og:url" content="http://localhost:4000/2019/01/27/Meeting-OLS-Assumptions.html" />
+<meta property="og:site_name" content="Marc Kelechava" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2019-01-27T00:00:00-08:00" />
+<script type="application/ld+json">
+{"url":"http://localhost:4000/2019/01/27/Meeting-OLS-Assumptions.html","headline":"Meeting the Assumptions of OLS Regression","dateModified":"2019-01-27T00:00:00-08:00","datePublished":"2019-01-27T00:00:00-08:00","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/2019/01/27/Meeting-OLS-Assumptions.html"},"description":"This article was originally published on Medium here.","@type":"BlogPosting","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Marc Kelechava" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Marc Kelechava</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">Meeting the Assumptions of OLS Regression</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2019-01-27T00:00:00-08:00" itemprop="datePublished">Jan 27, 2019
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p><em>This article was originally published on Medium <a href="https://towardsdatascience.com/what-to-do-when-your-data-fails-ols-regression-assumptions-916272367f66">here</a>.</em></p>
+
+<p>Regression analysis falls in the realm of inferential statistics. Consider the following equation:</p>
+
+<p><strong>y</strong> ≈ β0 + β1<strong>x</strong> + e</p>
+
+<p>The approximate equals sign indicates that there is an approximate linear relationship between <strong>x</strong> and <strong>y</strong>. The error <em>e</em> term indicates that this model isn’t going to fully reflect reality via a simple linear relation. The machine learning task is to estimate the beta parameters as follows:</p>
+
+<p><strong>ŷ</strong> = β̂0 + β̂1<strong>x</strong></p>
+
+<p>Note with there approximations of the betas it’s now possible to compute predictions for previously unseen values of the dependent variable.</p>
+
+<p>Unpacking this a little bit in ML terms, you would:</p>
+
+<ol>
+  <li>Take some data set with a feature vector <strong>x</strong> and a target vector <strong>y</strong></li>
+  <li>Split the data set into train/test sections randomly</li>
+  <li>Train the model and find estimates (β̂0, β̂1) of the true beta intercept and slope</li>
+  <li>See how your model generalizes by using your trained beta parameters to predict values of ŷ on the held-out test data</li>
+  <li>Compute residual errors between <strong>y</strong> and <strong>ŷ</strong> and quantify how good/bad you did with something like Mean Absolute Error or Root Mean Squared Error.</li>
+</ol>
+
+<h2 id="ordinary-least-squares">Ordinary Least Squares</h2>
+
+<p>This above model is a very simple example, so instead consider the more realistic multiple linear regression case where the goal is to find beta parameters as follows:</p>
+
+<p><strong>ŷ</strong> = β̂0 + β̂1<strong>x1</strong> + β̂2<strong>x2</strong> + … + β̂p<strong>xp</strong></p>
+
+<p>How does the model figure out what β̂ parameters to use as estimates? Ordinary Least Squares is a method where the solution finds all the β̂ coefficients which minimize the sum of squares of the residuals, i.e. minimizing the sum of these differences: (<strong>y</strong> - <strong>ŷ</strong>)^2, for all values of <strong>y</strong> and <strong>ŷ</strong> in the training observations. Think of <strong>y</strong> and <strong>ŷ</strong> as column vectors with entries equal to the number of your total observations.</p>
+
+<p>The fascinating bit is that OLS provides the <strong>best linear unbiased estimator (BLUE)</strong> of <strong>y</strong> under a set of classical assumptions. That’s a bit of a mouthful, but note that:</p>
+
+<ul>
+  <li>“best” = minimal variance of the OLS estimation of the true betas (i.e. <em>no other linear estimator</em> has less variance!)</li>
+  <li>“unbiased” = expected value of the estimated beta-hats equal the true beta values</li>
+</ul>
+
+<p>The proof of this is due to the heavyweight Gauss-Markov theorem, which is far beyond the scope of this post. However, it’s clearly beneficial to meet these assumptions and obtain a ‘BLUE’ estimator, so without further ado here are the assumptions:</p>
+
+<ol>
+  <li>Regression is linear in the β parameters</li>
+  <li>Residuals should be normally distributed with 0 mean</li>
+  <li>Residuals must have constant variance</li>
+  <li>Errors are uncorrelated across observations</li>
+  <li>No independent variable is a perfect linear function of any other independent variable</li>
+</ol>
+
+<h2 id="when-things-go-awry">When things go awry</h2>
+
+<p>In real life your data is unlikely to perfectly meet these assumptions. In this section I’ll show an example where my base data set blatantly violates assumption #2 and #3 above, and explicitly what I did to fix it.</p>
+
+<p>The example data came from funding levels of online-crowdsourced projects, and a variety of features such as campaign length, description text sentiment, number of photos and many more. By simply running OLS on the features and target here’s what the residuals looked like:
+<img src="http://localhost:4000/images/Screen Shot 2019-01-27 at 12.31.43 PM.png" alt="Image" />The red line indicates perfect normality, and clearly the residuals are not normally distributed in violation of assumption #2.</p>
+
+<p>Next, here’s a plot to check if the residuals are spread evenly across the range of predictors (assumption #3 for equal variance):</p>
+
+<p><img src="http://localhost:4000/images/Screen Shot 2019-01-27 at 12.33.01 PM.png" alt="Image" />
+Clearly the residual errors are not spread evenly across the range of predictors, so we have issues here as well.</p>
+
+<h2 id="data-transformation">Data Transformation</h2>
+
+<p>Here’s a pair plot of my untransformed data set with a few select problem features:
+<img src="http://localhost:4000/images/Screen Shot 2019-01-27 at 1.35.13 PM.png" alt="Image" />In this case pledged was my dependent <strong>y</strong>, and the number of gift options and photo count were two selected features. While not a guarantee, it’s sometime the case that transforming features or the target to a more normal distribution can help with the problematic OLS assumptions mentioned above.</p>
+
+<p>In this case, the pledged amount <strong>y</strong> is a classic example begging for a transformation to log space. Its individual y values take on anything from $2 to $80000. In my case ‘pledged’ was in a Pandas dataframe, so I quickly converted the entire column via numpy’s log function:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">df</span><span class="p">[</span><span class="s">'y_log'</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s">'pledged'</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s">'Count'</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s">'LOG of Pledged Amount'</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s">'Dist. of Transformed Pledged Amount - Dependent Target'</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s">'y_log'</span><span class="p">])</span>
+</code></pre></div></div>
+
+<p>This resulted in the following transformation:</p>
+
+<p><img src="http://localhost:4000/images/Screen Shot 2019-01-27 at 1.24.19 PM.png" alt="Image" />One quick aside is that when you transform <strong>y</strong> to log space, you’ll implicitly end up interpreting unit changes in X as having a percentage change interpretation in the original non-log y at the end. The answer in <a href="https://stats.stackexchange.com/questions/16747/interpreting-percentage-units-regression">this Stack Overflow question</a> has a very clear explanation of why this is the case by using the property of the natural log’s derivative.</p>
+
+<p>Now on to the features. I’ve found the <a href="https://en.wikipedia.org/wiki/Power_transform">Box-Cox transformation</a> to help immensely with regard to fixing residual normality for feature distributions with strange shapes. If you look at the center box in the pair plot above, you’ll see the un-transformed distribution of the number of gift options. It’s hard to even draw a parallel with a standard probability distribution, so here’s how to run a Box-Cox transformation using scipy.stats:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">lamb</span><span class="o">=</span><span class="n">stats</span><span class="o">.</span><span class="n">boxcox_normmax</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">num_gift_options</span><span class="p">,</span> <span class="n">brack</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mf">1.9</span><span class="p">,</span> <span class="mf">1.9</span><span class="p">))</span>
+<span class="k">print</span><span class="p">(</span><span class="s">"Lambda:"</span><span class="p">,</span> <span class="n">lamb</span><span class="p">)</span>
+<span class="n">num_gift_options_t</span> <span class="o">=</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">num_gift_options</span><span class="p">,</span><span class="n">lamb</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="n">lamb</span>
+<span class="n">df</span><span class="p">[</span><span class="s">'num_gift_options_t'</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">num_gift_options</span><span class="p">,</span><span class="n">lamb</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="n">lamb</span>
+</code></pre></div></div>
+
+<p>Note here that the <a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.boxcox.html">stats.boxcox_normax</a> function from scipy.stats will find the best lambda to use in the power transformation.</p>
+
+<p>Here’s how it looks post-transformation:</p>
+
+<p><img src="http://localhost:4000/images/Screen Shot 2019-01-27 at 1.31.49 PM.png" alt="Image" />If the feature in question has zero or negative values, neither the log transform or the box-cox will work. Thankfully, the <a href="https://www.stat.umn.edu/arc/yjpower.pdf">Yeo-Johnson power transformation</a> solves for this case explicitly. Conveniently, the Yeo-Johnson method is the default case in <a href="https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.PowerTransformer.html">sklearn.preprocessing’s</a> PowerTransformer:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">pt</span> <span class="o">=</span> <span class="n">PowerTransformer</span><span class="p">()</span>
+<span class="n">pt</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s">'photo_cnt'</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span>
+<span class="n">df</span><span class="p">[</span><span class="s">'photo_cnt_t'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pt</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s">'photo_cnt'</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s">'Count'</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s">'Box Cox Transformed Negative Sentiment'</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s">'Dist. of Transformed Negative Sentiment - Feature'</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s">'all_sentiment_neg_t'</span><span class="p">])</span>
+</code></pre></div></div>
+
+<p>Here’s what that looks like post-transformation:</p>
+
+<p><img src="http://localhost:4000/images/Screen Shot 2019-01-27 at 1.37.04 PM.png" alt="Image" />While the transformed features are by no means normally distributed themselves, look at what we get for our residual distribution and variance plots post-transformation:</p>
+
+<p><img src="http://localhost:4000/images/Screen Shot 2019-01-27 at 1.39.00 PM.png" alt="Image" /><img src="http://localhost:4000/images/Screen Shot 2019-01-27 at 1.39.34 PM.png" alt="Image" />This is night and day from where we started, and we can now say that we have essentially normally distributed residuals and constant variance among the residuals! Hence the OLS assumptions are met and we can proceed with modeling.</p>
+
+<h2 id="model-testing-and-interpretation">Model Testing and Interpretation</h2>
+
+<p>This is by no means the end point of the analysis. In this specific case, I ended up running a 3-fold Cross-Validation testing out Linear Regression, Ridge Regression, and Huber Regression on a validation split of my training data, and then finally testing the winner on the held-out test data to see if the model generalized. The overall point is that it’s best to make sure you have met the OLS assumptions before going into a full train/validation/test loop on a number of models for the regression case.</p>
+
+<p>One note is that when you transform a feature, you lose the ability to interpret the coefficients effect on y at the end. For example, I did not transform the project length feature in this analysis, and at the end I was able to say that a unit increase (+1 day) in project length led to an 11% decrease in funding amount.</p>
+
+<p>Since I used these transformations on the photo count and number of gift options features, I can’t make the same assertion given a unit increase in X, as the coefficient predictions are relative to the transformation. Thus transformations do have a downside, but it’s worth it to know you’re get a BLUE estimator via OLS.</p>
+
+  </div><a class="u-url" href="/2019/01/27/Meeting-OLS-Assumptions.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Marc Kelechava</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Marc Kelechava</li><li><a class="u-email" href="mailto:marc.kelechava@gmail.com">marc.kelechava@gmail.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/marcmuon"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">marcmuon</span></a></li><li><a href="https://www.linkedin.com/in/marckelechava"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#linkedin"></use></svg> <span class="username">marckelechava</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>Data Scientist at O&#39;Reilly Media &amp; Music Technology enthusiast</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
